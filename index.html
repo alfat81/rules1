@@ -1,9 +1,9 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Мотоциклетный спорт - Обучение и экзамен</title>
+    <title>🏆 Мотоциклетный спорт</title>
     <style>
         :root {
             --primary: #1a365d;
@@ -470,6 +470,57 @@
             margin: 20px 0;
         }
         
+        .error-instructions {
+            background: #f8fafc;
+            border: 2px solid #bfdbfe;
+            border-radius: 10px;
+            padding: 25px;
+            margin: 30px auto;
+            max-width: 800px;
+            text-align: left;
+        }
+        
+        .instruction-steps {
+            margin: 20px 0;
+            line-height: 1.8;
+        }
+        
+        .instruction-steps li {
+            margin-bottom: 10px;
+            color: #4b5563;
+        }
+        
+        .btn-file {
+            background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%);
+            color: white;
+            display: inline-block;
+            padding: 10px 20px;
+            border-radius: 8px;
+            margin: 15px 0;
+            cursor: pointer;
+        }
+        
+        .btn-file input {
+            display: none;
+        }
+        
+        .btn-demo {
+            background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%);
+            color: white;
+            display: inline-block;
+            padding: 12px 25px;
+            border-radius: 8px;
+            margin: 15px 0;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.3s ease;
+        }
+        
+        .btn-demo:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 6px rgba(139, 92, 246, 0.3);
+        }
+        
         @media (max-width: 768px) {
             .mode-selector {
                 flex-direction: column;
@@ -523,6 +574,32 @@
                 <div class="loading">
                     <div class="loading-spinner"></div>
                     <p>Загрузка вопросов для обучения...</p>
+                    <div class="error-instructions">
+                        <h3>⚠️ Ошибка загрузки данных</h3>
+                        <p>Не удалось загрузить файл quest.json</p>
+                        <p>Пожалуйста, выберите один из вариантов решения:</p>
+                        
+                        <div class="instruction-steps">
+                            <h4>Вариант 1: Запустите через локальный сервер (рекомендуется)</h4>
+                            <ul>
+                                <li>Если у вас установлен Python: откройте командную строку в папке с файлами и введите: <code>python -m http.server</code></li>
+                                <li>Если у вас установлен Node.js: введите: <code>npx http-server</code></li>
+                                <li>Если вы используете VS Code: установите расширение "Live Server" и запустите его</li>
+                                <li>После запуска сервера перейдите по адресу: <strong>http://localhost:8000</strong> или другому порту, указанному в консоли</li>
+                            </ul>
+                            
+                            <h4>Вариант 2: Загрузите файл вручную</h4>
+                            <button class="btn-file">
+                                <input type="file" id="jsonFile" accept=".json" onchange="loadFile(this)">
+                                📁 Выберите файл quest.json
+                            </button>
+                            
+                            <h4>Вариант 3: Используйте демо-режим</h4>
+                            <button class="btn-demo" onclick="loadDemoMode()">
+                                🎮 Запустить демо-версию (без загрузки файла)
+                            </button>
+                        </div>
+                    </div>
                 </div>
             </div>
             
@@ -550,6 +627,32 @@
                 <div class="loading">
                     <div class="loading-spinner"></div>
                     <p>Подготовка к экзамену...</p>
+                    <div class="error-instructions">
+                        <h3>⚠️ Ошибка загрузки данных</h3>
+                        <p>Не удалось загрузить файл quest.json</p>
+                        <p>Пожалуйста, выберите один из вариантов решения:</p>
+                        
+                        <div class="instruction-steps">
+                            <h4>Вариант 1: Запустите через локальный сервер (рекомендуется)</h4>
+                            <ul>
+                                <li>Если у вас установлен Python: откройте командную строку в папке с файлами и введите: <code>python -m http.server</code></li>
+                                <li>Если у вас установлен Node.js: введите: <code>npx http-server</code></li>
+                                <li>Если вы используете VS Code: установите расширение "Live Server" и запустите его</li>
+                                <li>После запуска сервера перейдите по адресу: <strong>http://localhost:8000</strong> или другому порту, указанному в консоли</li>
+                            </ul>
+                            
+                            <h4>Вариант 2: Загрузите файл вручную</h4>
+                            <button class="btn-file">
+                                <input type="file" id="jsonFileExam" accept=".json" onchange="loadFile(this)">
+                                📁 Выберите файл quest.json
+                            </button>
+                            
+                            <h4>Вариант 3: Используйте демо-режим</h4>
+                            <button class="btn-demo" onclick="startDemoExam()">
+                                🎮 Запустить демо-экзамен (без загрузки файла)
+                            </button>
+                        </div>
+                    </div>
                 </div>
             </div>
             
@@ -577,7 +680,7 @@
 
     <script>
         // Глобальные переменные
-        let questionsData = {};
+        let questionsData = null;
         let currentMode = 'training';
         let currentChapter = '';
         let currentQuestionIndex = 0;
@@ -586,9 +689,11 @@
         let examTimeLeft = 1800; // 30 минут в секундах
         let examStarted = false;
         let examCompleted = false;
+        let demoMode = false;
 
         // Инициализация при загрузке страницы
         document.addEventListener('DOMContentLoaded', function() {
+            // Попробуем загрузить данные из quest.json
             loadQuestionsData();
         });
 
@@ -601,20 +706,131 @@
                 }
                 questionsData = await response.json();
                 populateChapterSelector();
-                loadChapterForTraining();
+                
+                // Если есть данные, начинаем обучение
+                if (questionsData && Object.keys(questionsData.chapters || {}).length > 0) {
+                    document.querySelector('.chapter-selector select').value = Object.keys(questionsData.chapters)[0];
+                    loadChapterForTraining();
+                }
             } catch (error) {
                 console.error('Ошибка загрузки данных:', error);
-                document.getElementById('trainingContent').innerHTML = `
-                    <div class="error-container">
-                        <h3>❌ Ошибка загрузки данных</h3>
-                        <p>Не удалось загрузить файл quest.json</p>
-                        <p>Пожалуйста, убедитесь, что файл находится в той же папке, что и эта страница</p>
-                        <button class="nav-btn btn-next" onclick="location.reload()" style="margin-top: 20px; background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);">
-                            🔄 Попробовать еще раз
-                        </button>
-                    </div>
-                `;
+                // Не показываем ошибку здесь, так как она уже показана в интерфейсе
             }
+        }
+
+        // Загрузка файла через выбор пользователя
+        function loadFile(input) {
+            const file = input.files[0];
+            if (!file) return;
+            
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    questionsData = JSON.parse(e.target.result);
+                    populateChapterSelector();
+                    
+                    if (currentMode === 'training') {
+                        if (questionsData && Object.keys(questionsData.chapters || {}).length > 0) {
+                            document.querySelector('.chapter-selector select').value = Object.keys(questionsData.chapters)[0];
+                            loadChapterForTraining();
+                        }
+                    } else {
+                        startExamPreparation();
+                    }
+                    
+                    // Скрываем блок с ошибкой
+                    const errorContainers = document.querySelectorAll('.error-instructions');
+                    errorContainers.forEach(container => {
+                        container.style.display = 'none';
+                    });
+                    
+                    alert('Файл успешно загружен! Можно продолжать работу.');
+                } catch (error) {
+                    console.error('Ошибка при разборе файла:', error);
+                    alert('Ошибка при загрузке файла. Пожалуйста, выберите правильный файл quest.json');
+                }
+            };
+            reader.readAsText(file);
+        }
+
+        // Загрузка демо-режима
+        function loadDemoMode() {
+            demoMode = true;
+            questionsData = {
+                "chapters": {
+                    "chapter_demo": {
+                        "title": "ДЕМО-ВЕРСИЯ: Спортивный кодекс (образец)",
+                        "questions": [
+                            {
+                                "question": "Кто утверждает настоящие правила вида спорта «мотоциклетный спорт»?",
+                                "options": [
+                                    {"text": "Министерство спорта Российской Федерации", "correct": true},
+                                    {"text": "Международная мотоциклетная федерация (ФИМ)", "correct": false},
+                                    {"text": "Государственная дума РФ", "correct": false},
+                                    {"text": "Правительство Российской Федерации", "correct": false},
+                                    {"text": "Региональные спортивные организации", "correct": false}
+                                ]
+                            },
+                            {
+                                "question": "Из скольких неотъемлемых частей состоят настоящие Правила?",
+                                "options": [
+                                    {"text": "1", "correct": false},
+                                    {"text": "2", "correct": true},
+                                    {"text": "3", "correct": false},
+                                    {"text": "4", "correct": false},
+                                    {"text": "5", "correct": false}
+                                ]
+                            },
+                            {
+                                "question": "Что такое «Директор соревнования» согласно Спортивному кодексу?",
+                                "options": [
+                                    {"text": "Официальное лицо, обеспечивающее материальное финансирование соревнований", "correct": false},
+                                    {"text": "Назначенное организатором должностное лицо, осуществляющее подготовку спортивного мероприятия", "correct": true},
+                                    {"text": "Главная судейская инстанция на соревнованиях", "correct": false},
+                                    {"text": "Представитель спонсоров соревнования", "correct": false},
+                                    {"text": "Главный спонсор соревнований", "correct": false}
+                                ]
+                            }
+                        ]
+                    }
+                }
+            };
+            
+            populateChapterSelector();
+            
+            if (currentMode === 'training') {
+                document.querySelector('.chapter-selector select').value = 'chapter_demo';
+                loadChapterForTraining();
+            } else {
+                startDemoExam();
+            }
+            
+            // Скрываем блок с ошибкой
+            const errorContainers = document.querySelectorAll('.error-instructions');
+            errorContainers.forEach(container => {
+                container.style.display = 'none';
+            });
+        }
+
+        // Демо-экзамен
+        function startDemoExam() {
+            demoMode = true;
+            loadDemoMode();
+            currentChapter = 'chapter_demo';
+            examTimeLeft = 300; // 5 минут для демо
+            
+            // Сбрасываем состояние экзамена
+            currentQuestionIndex = 0;
+            userAnswers = {};
+            examStarted = false;
+            examCompleted = false;
+            clearInterval(examTimer);
+            
+            document.getElementById('examChapter').textContent = `ДЕМО-ВЕРСИЯ`;
+            document.getElementById('examProgress').textContent = `0/${questionsData.chapters.chapter_demo.questions.length}`;
+            
+            document.getElementById('examResults').style.display = 'none';
+            showExamQuestion();
         }
 
         // Заполнение селектора глав
@@ -622,7 +838,7 @@
             const select = document.getElementById('chapterSelect');
             select.innerHTML = '<option value="">Выберите главу</option>';
             
-            if (questionsData.chapters) {
+            if (questionsData && questionsData.chapters) {
                 Object.entries(questionsData.chapters).forEach(([key, chapter]) => {
                     const option = document.createElement('option');
                     option.value = key;
@@ -649,14 +865,28 @@
                 document.querySelector('.mode-btn.exam').classList.add('active');
                 document.querySelector('.exam-mode').classList.add('active');
                 document.querySelector('.training-mode').classList.remove('active');
-                startExamPreparation();
+                
+                if (questionsData) {
+                    startExamPreparation();
+                }
             }
         }
 
         // Загрузка главы для обучения
         function loadChapterForTraining() {
             const chapterKey = document.getElementById('chapterSelect').value;
-            if (!chapterKey || !questionsData.chapters[chapterKey]) return;
+            if (!chapterKey || !questionsData || !questionsData.chapters || !questionsData.chapters[chapterKey]) {
+                if (!questionsData) {
+                    document.getElementById('trainingContent').innerHTML = `
+                        <div class="error-container">
+                            <h3>❌ Ошибка загрузки данных</h3>
+                            <p>Данные не загружены. Пожалуйста, используйте один из вариантов решения:</p>
+                            <button class="btn-demo" onclick="loadDemoMode()">🎮 Запустить демо-версию</button>
+                        </div>
+                    `;
+                }
+                return;
+            }
             
             currentChapter = chapterKey;
             const chapter = questionsData.chapters[chapterKey];
@@ -677,7 +907,16 @@
 
         // Отображение вопроса в режиме обучения
         function showTrainingQuestion() {
-            if (!currentChapter || !questionsData.chapters[currentChapter]) return;
+            if (!currentChapter || !questionsData || !questionsData.chapters || !questionsData.chapters[currentChapter]) {
+                document.getElementById('trainingContent').innerHTML = `
+                    <div class="error-container">
+                        <h3>❌ Ошибка данных</h3>
+                        <p>Не удалось найти данные для выбранной главы</p>
+                        <button class="btn-demo" onclick="loadDemoMode()">🎮 Запустить демо-версию</button>
+                    </div>
+                `;
+                return;
+            }
             
             const chapter = questionsData.chapters[currentChapter];
             const question = chapter.questions[currentQuestionIndex];
@@ -774,7 +1013,7 @@
 
         // Показ результатов обучения
         function showTrainingResults() {
-            if (!currentChapter || !questionsData.chapters[currentChapter]) return;
+            if (!currentChapter || !questionsData || !questionsData.chapters || !questionsData.chapters[currentChapter]) return;
             
             const chapter = questionsData.chapters[currentChapter];
             let correctCount = 0;
@@ -799,7 +1038,13 @@
             else levelText = 'Требуется дополнительное изучение 📚';
             
             document.getElementById('trainingResults').style.display = 'block';
-            document.getElementById('trainingResults').innerHTML += `<p>${levelText}</p>`;
+            document.getElementById('trainingResults').innerHTML = `
+                <h2>🎉 Вы завершили изучение главы!</h2>
+                <div class="score" id="trainingScore">${correctCount}/${chapter.questions.length}</div>
+                <p class="score-text">Ваш результат: <span id="trainingPercentage">${percentage}%</span></p>
+                <p>${levelText}</p>
+                <button class="btn-results" onclick="restartTraining()">🎯 Пройти еще раз</button>
+            `;
         }
 
         // Перезапуск обучения
@@ -813,9 +1058,14 @@
 
         // Подготовка к экзамену
         function startExamPreparation() {
-            if (!questionsData.chapters || Object.keys(questionsData.chapters).length === 0) {
-                alert('Сначала загрузите данные с вопросами!');
-                switchMode('training');
+            if (!questionsData || !questionsData.chapters) {
+                document.getElementById('examContent').innerHTML = `
+                    <div class="error-container">
+                        <h3>❌ Ошибка данных</h3>
+                        <p>Данные для экзамена не загружены</p>
+                        <button class="btn-demo" onclick="startDemoExam()">🎮 Запустить демо-экзамен</button>
+                    </div>
+                `;
                 return;
             }
             
@@ -842,7 +1092,16 @@
 
         // Отображение вопроса в режиме экзамена
         function showExamQuestion() {
-            if (!currentChapter || !questionsData.chapters[currentChapter]) return;
+            if (!currentChapter || !questionsData || !questionsData.chapters || !questionsData.chapters[currentChapter]) {
+                document.getElementById('examContent').innerHTML = `
+                    <div class="error-container">
+                        <h3>❌ Ошибка данных</h3>
+                        <p>Не удалось найти данные для экзамена</p>
+                        <button class="btn-demo" onclick="startDemoExam()">🎮 Запустить демо-экзамен</button>
+                    </div>
+                `;
+                return;
+            }
             
             if (!examStarted) {
                 examStarted = true;
@@ -958,7 +1217,17 @@
 
         // Показ результатов экзамена
         function showExamResults() {
-            if (!currentChapter || !questionsData.chapters[currentChapter]) return;
+            if (!currentChapter || !questionsData || !questionsData.chapters || !questionsData.chapters[currentChapter]) {
+                document.getElementById('examResults').innerHTML = `
+                    <div class="error-container">
+                        <h3>❌ Ошибка данных</h3>
+                        <p>Не удалось рассчитать результаты экзамена</p>
+                        <button class="btn-demo" onclick="startDemoExam()">🎮 Попробовать демо-экзамен</button>
+                    </div>
+                `;
+                document.getElementById('examResults').style.display = 'block';
+                return;
+            }
             
             const chapter = questionsData.chapters[currentChapter];
             let correctCount = 0;
@@ -1012,7 +1281,12 @@
         function restartExam() {
             clearInterval(examTimer);
             document.getElementById('examResults').style.display = 'none';
-            startExamPreparation();
+            
+            if (demoMode) {
+                startDemoExam();
+            } else {
+                startExamPreparation();
+            }
         }
 
         // Скачивание сертификата
