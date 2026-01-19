@@ -633,7 +633,7 @@
         <!-- Режим экзамена -->
         <div class="content-area exam-mode">
             <div class="status-bar">
-                <div>챕 Глава: <span id="examChapter">-</span></div>
+                <div>📚 Темы: <span id="examTopics">Случайные из всех глав</span></div>
                 <div>⏰ Время: <span class="timer" id="examTimer">30:00</span></div>
                 <div>📊 Прогресс: <span id="examProgress">0/20</span></div>
             </div>
@@ -710,6 +710,10 @@
         let examCompleted = false;
         let demoMode = false;
         let examScorePercentage = 0; // Для хранения результата экзамена
+        
+        // Новые переменные для случайных вопросов из всех глав
+        let examQuestions = []; // Массив с вопросами для экзамена
+        let totalExamQuestions = 20; // Количество вопросов в экзамене
 
         // Инициализация при загрузке страницы
         document.addEventListener('DOMContentLoaded', function() {
@@ -836,7 +840,6 @@
         function startDemoExam() {
             demoMode = true;
             loadDemoMode();
-            currentChapter = 'chapter_demo';
             examTimeLeft = 300; // 5 минут для демо
             
             // Сбрасываем состояние экзамена
@@ -847,8 +850,20 @@
             examScorePercentage = 0;
             clearInterval(examTimer);
             
-            document.getElementById('examChapter').textContent = `ДЕМО-ВЕРСИЯ`;
-            document.getElementById('examProgress').textContent = `0/${questionsData.chapters.chapter_demo.questions.length}`;
+            // Для демо-режима берем все вопросы из демо-главы
+            examQuestions = [];
+            const demoChapter = questionsData.chapters.chapter_demo;
+            demoChapter.questions.forEach((question, index) => {
+                examQuestions.push({
+                    question: question,
+                    chapterId: 'chapter_demo',
+                    chapterTitle: demoChapter.title,
+                    originalIndex: index
+                });
+            });
+            
+            document.getElementById('examTopics').textContent = `ДЕМО-ВЕРСИЯ`;
+            document.getElementById('examProgress').textContent = `0/${examQuestions.length}`;
             
             document.getElementById('examResults').style.display = 'none';
             showExamQuestion();
@@ -1077,7 +1092,7 @@
             showTrainingQuestion();
         }
 
-        // Подготовка к экзамену
+        // Подготовка к экзамену (случайные вопросы из всех глав)
         function startExamPreparation() {
             if (!questionsData || !questionsData.chapters) {
                 document.getElementById('examContent').innerHTML = `
@@ -1090,13 +1105,60 @@
                 return;
             }
             
-            // Выбираем случайную главу для экзамена
-            const chapterKeys = Object.keys(questionsData.chapters);
-            currentChapter = chapterKeys[Math.floor(Math.random() * chapterKeys.length)];
+            // Собираем все вопросы из всех глав в один массив
+            let allQuestions = [];
+            let chapterTitles = {};
             
-            const chapter = questionsData.chapters[currentChapter];
-            document.getElementById('examChapter').textContent = `${currentChapter.replace('chapter_', '')}. ${chapter.title}`;
-            document.getElementById('examProgress').textContent = `0/${chapter.questions.length}`;
+            Object.entries(questionsData.chapters).forEach(([chapterId, chapter]) => {
+                chapterTitles[chapterId] = chapter.title;
+                chapter.questions.forEach((question, questionIndex) => {
+                    allQuestions.push({
+                        question: question,
+                        chapterId: chapterId,
+                        chapterTitle: chapter.title,
+                        originalIndex: questionIndex
+                    });
+                });
+            });
+            
+            // Проверяем, достаточно ли вопросов
+            if (allQuestions.length < totalExamQuestions) {
+                alert(`Внимание: В базе только ${allQuestions.length} вопросов. Экзамен будет содержать все доступные вопросы.`);
+                totalExamQuestions = allQuestions.length;
+            }
+            
+            // Выбираем случайные вопросы
+            examQuestions = [];
+            let selectedIndices = new Set();
+            
+            // Если вопросов меньше, чем нужно, берем все
+            if (allQuestions.length <= totalExamQuestions) {
+                examQuestions = [...allQuestions];
+            } else {
+                // Выбираем случайные уникальные вопросы
+                while (examQuestions.length < totalExamQuestions && selectedIndices.size < allQuestions.length) {
+                    const randomIndex = Math.floor(Math.random() * allQuestions.length);
+                    if (!selectedIndices.has(randomIndex)) {
+                        selectedIndices.add(randomIndex);
+                        examQuestions.push(allQuestions[randomIndex]);
+                    }
+                }
+            }
+            
+            // Перемешиваем порядок вопросов
+            examQuestions = shuffleArray(examQuestions);
+            
+            // Определяем, из каких глав взяты вопросы
+            const uniqueChapters = [...new Set(examQuestions.map(q => q.chapterTitle))];
+            let chaptersText = '';
+            if (uniqueChapters.length <= 3) {
+                chaptersText = uniqueChapters.join(', ');
+            } else {
+                chaptersText = `${uniqueChapters.length} различных глав`;
+            }
+            
+            document.getElementById('examTopics').textContent = chaptersText;
+            document.getElementById('examProgress').textContent = `0/${examQuestions.length}`;
             
             // Сбрасываем состояние экзамена
             currentQuestionIndex = 0;
@@ -1114,14 +1176,24 @@
             document.getElementById('examResults').style.display = 'none';
             showExamQuestion();
         }
+        
+        // Функция для перемешивания массива (алгоритм Фишера-Йетса)
+        function shuffleArray(array) {
+            const shuffled = [...array];
+            for (let i = shuffled.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+            }
+            return shuffled;
+        }
 
         // Отображение вопроса в режиме экзамена
         function showExamQuestion() {
-            if (!currentChapter || !questionsData || !questionsData.chapters || !questionsData.chapters[currentChapter]) {
+            if (!examQuestions || examQuestions.length === 0 || currentQuestionIndex >= examQuestions.length) {
                 document.getElementById('examContent').innerHTML = `
                     <div class="error-container">
                         <h3>❌ Ошибка данных</h3>
-                        <p>Не удалось найти данные для экзамена</p>
+                        <p>Не удалось найти вопросы для экзамена</p>
                         <button class="btn-demo" onclick="startDemoExam()">🎮 Запустить демо-экзамен</button>
                     </div>
                 `;
@@ -1133,11 +1205,11 @@
                 startExamTimer();
             }
             
-            const chapter = questionsData.chapters[currentChapter];
-            const question = chapter.questions[currentQuestionIndex];
+            const examQuestion = examQuestions[currentQuestionIndex];
+            const question = examQuestion.question;
             
             // Проверяем, был ли уже дан ответ на этот вопрос
-            const selectedIndex = userAnswers[currentChapter] && userAnswers[currentChapter][currentQuestionIndex];
+            const selectedIndex = userAnswers[currentQuestionIndex];
             const hasAnswer = selectedIndex !== undefined;
             
             let optionsHTML = '';
@@ -1156,7 +1228,7 @@
             
             document.getElementById('examContent').innerHTML = `
                 <div class="question-container">
-                    <div class="question-number">Вопрос ${currentQuestionIndex + 1} из ${chapter.questions.length}</div>
+                    <div class="question-number">Вопрос ${currentQuestionIndex + 1} из ${examQuestions.length} | ${examQuestion.chapterTitle}</div>
                     <div class="question-text">${question.question}</div>
                     
                     <div class="options-container">
@@ -1166,7 +1238,7 @@
                 
                 <div class="controls">
                     ${currentQuestionIndex > 0 ? `<button class="nav-btn btn-prev" onclick="prevQuestionExam()">◀ Предыдущий</button>` : ''}
-                    ${currentQuestionIndex < chapter.questions.length - 1 ? 
+                    ${currentQuestionIndex < examQuestions.length - 1 ? 
                         `<button class="nav-btn btn-next" onclick="nextQuestionExam()">Следующий ▶</button>` : 
                         `<button class="nav-btn btn-finish" onclick="finishExam()">✅ Завершить экзамен</button>`
                     }
@@ -1199,10 +1271,9 @@
 
         // Обновление прогресса
         function updateProgress() {
-            const chapter = questionsData.chapters[currentChapter];
-            const progress = ((currentQuestionIndex + 1) / chapter.questions.length) * 100;
+            const progress = ((currentQuestionIndex + 1) / examQuestions.length) * 100;
             document.getElementById('progressFill').style.width = `${progress}%`;
-            document.getElementById('examProgress').textContent = `${currentQuestionIndex + 1}/${chapter.questions.length}`;
+            document.getElementById('examProgress').textContent = `${currentQuestionIndex + 1}/${examQuestions.length}`;
         }
 
         // Выбор ответа в режиме экзамена (фиксированный выбор)
@@ -1210,7 +1281,7 @@
             if (examCompleted) return;
             
             // Проверяем, был ли уже выбран ответ для этого вопроса
-            if (userAnswers[currentChapter] && userAnswers[currentChapter][currentQuestionIndex] !== undefined) {
+            if (userAnswers[currentQuestionIndex] !== undefined) {
                 return; // Не позволяем изменить уже выбранный ответ
             }
             
@@ -1225,10 +1296,7 @@
             options[optionIndex].classList.add('selected');
             
             // Сохраняем ответ (теперь он фиксируется)
-            if (!userAnswers[currentChapter]) {
-                userAnswers[currentChapter] = {};
-            }
-            userAnswers[currentChapter][currentQuestionIndex] = optionIndex;
+            userAnswers[currentQuestionIndex] = optionIndex;
             
             // Блокируем все варианты для этого вопроса
             options.forEach(opt => {
@@ -1237,8 +1305,7 @@
             
             // Автоматически переходим к следующему вопросу через 0.5 секунды
             setTimeout(() => {
-                const chapter = questionsData.chapters[currentChapter];
-                if (currentQuestionIndex < chapter.questions.length - 1) {
+                if (currentQuestionIndex < examQuestions.length - 1) {
                     nextQuestionExam();
                 }
             }, 500);
@@ -1268,7 +1335,7 @@
 
         // Показ результатов экзамена
         function showExamResults() {
-            if (!currentChapter || !questionsData || !questionsData.chapters || !questionsData.chapters[currentChapter]) {
+            if (!examQuestions || examQuestions.length === 0) {
                 document.getElementById('examResults').innerHTML = `
                     <div class="error-container">
                         <h3>❌ Ошибка данных</h3>
@@ -1280,21 +1347,20 @@
                 return;
             }
             
-            const chapter = questionsData.chapters[currentChapter];
             let correctCount = 0;
             
-            for (let i = 0; i < chapter.questions.length; i++) {
-                if (userAnswers[currentChapter] && userAnswers[currentChapter][i] !== undefined) {
-                    if (chapter.questions[i].options[userAnswers[currentChapter][i]].correct) {
+            for (let i = 0; i < examQuestions.length; i++) {
+                if (userAnswers[i] !== undefined) {
+                    if (examQuestions[i].question.options[userAnswers[i]].correct) {
                         correctCount++;
                     }
                 }
             }
             
-            const percentage = Math.round((correctCount / chapter.questions.length) * 100);
+            const percentage = Math.round((correctCount / examQuestions.length) * 100);
             examScorePercentage = percentage; // Сохраняем результат для проверки при скачивании
             
-            document.getElementById('examScore').textContent = `${correctCount}/${chapter.questions.length}`;
+            document.getElementById('examScore').textContent = `${correctCount}/${examQuestions.length}`;
             document.getElementById('examPercentage').textContent = `${percentage}%`;
             
             let levelText = '';
@@ -1311,6 +1377,29 @@
             } else {
                 levelText = 'Начинающий';
                 levelClass = 'danger';
+            }
+            
+            // Анализ по главам
+            let chapterStats = {};
+            examQuestions.forEach((q, index) => {
+                const chapterTitle = q.chapterTitle;
+                if (!chapterStats[chapterTitle]) {
+                    chapterStats[chapterTitle] = { total: 0, correct: 0 };
+                }
+                chapterStats[chapterTitle].total++;
+                if (userAnswers[index] !== undefined && q.question.options[userAnswers[index]].correct) {
+                    chapterStats[chapterTitle].correct++;
+                }
+            });
+            
+            let chapterStatsHTML = '';
+            for (const [chapter, stats] of Object.entries(chapterStats)) {
+                const chapterPercentage = Math.round((stats.correct / stats.total) * 100);
+                chapterStatsHTML += `
+                    <div style="margin: 5px 0; padding: 5px; background: #f1f5f9; border-radius: 5px;">
+                        ${chapter}: ${stats.correct}/${stats.total} (${chapterPercentage}%)
+                    </div>
+                `;
             }
             
             document.getElementById('certificateLevel').textContent = levelText;
@@ -1341,6 +1430,14 @@
                     </div>
                 `;
             }
+            
+            // Добавляем статистику по главам к результатам
+            document.getElementById('examResults').innerHTML += `
+                <div style="margin-top: 30px; text-align: left; max-width: 600px; margin-left: auto; margin-right: auto;">
+                    <h3>📊 Статистика по темам:</h3>
+                    ${chapterStatsHTML}
+                </div>
+            `;
             
             document.getElementById('examResults').style.display = 'block';
             document.getElementById('examContent').innerHTML = '';
