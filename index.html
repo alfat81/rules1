@@ -307,6 +307,15 @@
             padding: 15px 30px;
         }
         
+        .btn-download-certificate {
+            background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%);
+            color: white;
+            min-width: 250px;
+            font-size: 1.2rem;
+            padding: 15px 30px;
+            display: none;
+        }
+        
         .timer {
             font-size: 1.5rem;
             font-weight: bold;
@@ -681,7 +690,7 @@
                 </div>
                 
                 <button class="btn-results" onclick="restartExam()">🔄 Попробовать еще раз</button>
-                <button class="btn-results" style="background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%);" onclick="downloadCertificate()">
+                <button class="btn-download-certificate" id="downloadCertificateBtn" onclick="downloadCertificate()">
                     💾 Скачать сертификат
                 </button>
             </div>
@@ -700,6 +709,7 @@
         let examStarted = false;
         let examCompleted = false;
         let demoMode = false;
+        let examScorePercentage = 0; // Для хранения результата экзамена
 
         // Инициализация при загрузке страницы
         document.addEventListener('DOMContentLoaded', function() {
@@ -834,6 +844,7 @@
             userAnswers = {};
             examStarted = false;
             examCompleted = false;
+            examScorePercentage = 0;
             clearInterval(examTimer);
             
             document.getElementById('examChapter').textContent = `ДЕМО-ВЕРСИЯ`;
@@ -1093,7 +1104,11 @@
             examTimeLeft = 1800; // 30 минут
             examStarted = false;
             examCompleted = false;
+            examScorePercentage = 0;
             clearInterval(examTimer);
+            
+            // Скрываем кнопку скачивания сертификата
+            document.getElementById('downloadCertificateBtn').style.display = 'none';
             
             // Отображаем первый вопрос экзамена
             document.getElementById('examResults').style.display = 'none';
@@ -1277,6 +1292,7 @@
             }
             
             const percentage = Math.round((correctCount / chapter.questions.length) * 100);
+            examScorePercentage = percentage; // Сохраняем результат для проверки при скачивании
             
             document.getElementById('examScore').textContent = `${correctCount}/${chapter.questions.length}`;
             document.getElementById('examPercentage').textContent = `${percentage}%`;
@@ -1309,6 +1325,23 @@
             });
             document.getElementById('certificateDate').textContent = formattedDate;
             
+            // Показываем или скрываем кнопку скачивания сертификата
+            const downloadBtn = document.getElementById('downloadCertificateBtn');
+            if (percentage >= 60) {
+                downloadBtn.style.display = 'inline-block';
+                downloadBtn.textContent = '💾 Скачать сертификат';
+            } else {
+                downloadBtn.style.display = 'none';
+                // Добавляем сообщение о неудачной сдаче
+                document.getElementById('examResults').innerHTML += `
+                    <div style="margin-top: 20px; padding: 15px; background: #fee2e2; border-radius: 10px; color: #b91c1c;">
+                        <strong>⚠️ Сертификат не выдан</strong>
+                        <p>Для получения сертификата необходимо набрать не менее 60% правильных ответов.</p>
+                        <p>Ваш результат: ${percentage}%. Попробуйте снова!</p>
+                    </div>
+                `;
+            }
+            
             document.getElementById('examResults').style.display = 'block';
             document.getElementById('examContent').innerHTML = '';
         }
@@ -1325,44 +1358,62 @@
             }
         }
 
-        // Скачивание сертификата
+        // Скачивание сертификата (только при успешной сдаче)
         function downloadCertificate() {
+            // Проверяем, сдан ли экзамен успешно (от 60% и выше)
+            if (examScorePercentage < 60) {
+                alert('Сертификат выдается только при успешной сдаче экзамена (не менее 60% правильных ответов).\nВаш результат: ' + examScorePercentage + '%');
+                return;
+            }
+            
             const certificateContent = document.querySelector('.certificate').innerHTML;
             const blob = new Blob([`
                 <!DOCTYPE html>
                 <html>
                 <head>
                     <meta charset="UTF-8">
-                    <title>Сертификат</title>
+                    <title>Сертификат об успешном прохождении экзамена</title>
                     <style>
-                        body { font-family: Arial, sans-serif; margin: 40px; }
+                        body { 
+                            font-family: 'Arial', sans-serif; 
+                            margin: 0;
+                            padding: 40px;
+                            background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%);
+                            min-height: 100vh;
+                            display: flex;
+                            justify-content: center;
+                            align-items: center;
+                        }
                         .certificate { 
                             border: 3px solid #1a365d; 
                             border-radius: 20px; 
                             padding: 40px; 
                             max-width: 800px; 
-                            margin: 0 auto; 
+                            width: 100%;
                             text-align: center; 
                             background: white; 
-                            box-shadow: 0 0 20px rgba(0,0,0,0.2); 
+                            box-shadow: 0 10px 30px rgba(0,0,0,0.15);
                         }
                         .certificate-title { 
                             font-size: 2.5rem; 
                             color: #1a365d; 
-                            margin-bottom: 20px; 
-                            text-transform: uppercase; 
+                            margin-bottom: 30px; 
+                            text-transform: uppercase;
+                            font-weight: bold;
                         }
                         .certificate-body { 
                             font-size: 1.3rem; 
                             line-height: 1.8; 
-                            margin: 15px 0; 
+                            margin: 20px 0; 
                         }
                         .certificate-name { 
                             font-size: 2.2rem; 
                             font-weight: bold; 
                             color: #2c5282; 
-                            margin: 25px 0; 
-                            text-decoration: underline; 
+                            margin: 30px 0; 
+                            padding: 10px;
+                            border-bottom: 2px solid #2c5282;
+                            display: inline-block;
                         }
                         .certificate-date { 
                             font-size: 1.2rem; 
@@ -1370,10 +1421,35 @@
                             margin-top: 40px; 
                             font-style: italic; 
                         }
+                        .certificate-level {
+                            font-size: 1.5rem;
+                            color: #10b981;
+                            font-weight: bold;
+                            margin: 15px 0;
+                        }
+                        .watermark {
+                            position: absolute;
+                            opacity: 0.1;
+                            font-size: 10rem;
+                            transform: rotate(-45deg);
+                            color: #1a365d;
+                            top: 30%;
+                            left: 10%;
+                        }
                     </style>
                 </head>
                 <body>
+                    <div class="watermark">Мотоспорт 2025</div>
                     ${certificateContent}
+                    <div style="margin-top: 30px; font-size: 0.9rem; color: #64748b;">
+                        Сертификат сгенерирован: ${new Date().toLocaleDateString('ru-RU', { 
+                            day: 'numeric', 
+                            month: 'long', 
+                            year: 'numeric',
+                            hour: '2-digit',
+                            minute: '2-digit'
+                        })}
+                    </div>
                 </body>
                 </html>
             `], { type: 'text/html' });
